@@ -9,3 +9,15 @@ kNN (k nearest neighbor), a derivation of ANN algorithm. Check it out in the knn
 SVM (Support Vector Machine), a single layered classification algorithm that uses piece-wise linear functions from each sample to reach a "bowl" shaped cost function to minimize on for classification.
 
 Softmax (Generalization of Logistic Regression), a single layered classification algorithm that assumes the scores(X dot W) are unormalized log distributions of the actual probability function, which is computed to get the correct classes to converge to 1 and the incorrect classes to converge to 0(the probabilities all add up to 1).
+
+Neural Network, a two layered classification algorithm that does coordinate transformation of scores to make it linear separable by the final layer(either a softmax or an SVM). 
+
+#Accuracies of each:#
+
+Blind guess ~ 10%
+
+KNN ~ 25%, 
+
+SVM/Softmax ~ 35%,
+
+Neural Network ~ 50%
