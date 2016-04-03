@@ -14,7 +14,7 @@ class Solver(object):
   data to watch out for overfitting.
 
   To train a model, you will first construct a Solver instance, passing the
-  model, dataset, and various optoins (learning rate, batch size, etc) to the
+  model, dataset, and various options (learning rate, batch size, etc) to the
   constructor. You will then call the train() method to run the optimization
   procedure and train the model.
   
@@ -31,7 +31,7 @@ class Solver(object):
     'X_train': # training data
     'y_train': # training labels
     'X_val': # validation data
-    'X_train': # validation labels
+    'y_val': # validation labels
   }
   model = MyAwesomeModel(hidden_size=100, reg=10)
   solver = Solver(model, data,
