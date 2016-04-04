@@ -165,7 +165,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     running_mean = bn_param.get('running_mean', np.zeros(D, dtype=x.dtype))
     running_var = bn_param.get('running_var', np.zeros(D, dtype=x.dtype))
 
-    out, cache = None, None
+    out, cache = None, {}
     if mode == 'train':
         #############################################################################
         # TODO: Implement the training-time forward pass for batch normalization.   #
@@ -180,7 +180,23 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # the momentum variable to update the running mean and running variance,    #
         # storing your result in the running_mean and running_var variables.        #
         #############################################################################
-        pass
+        # Get the mean of every feature:
+        u_b = (np.sum(x, axis = 0))/N
+        # Get the variance:
+        sigma_squared_b = np.sum((x-u_b)**2, axis = 0)/N
+        # Get x_hat
+        x_hat = (x-u_b)/np.sqrt(sigma_squared_b + eps)
+        out = gamma*x_hat + beta
+        cache['mean'] = u_b
+        cache['variance'] = sigma_squared_b
+        cache['x_hat'] = x_hat
+        cache['gamma'] = gamma
+        cache['beta'] = beta
+        cache['eps'] = eps
+        cache['x'] = x
+        # Keeping track of running mean and var
+        running_mean = momentum*running_mean + (1-momentum)*u_b
+        running_var = momentum*running_var + (1-momentum)*sigma_squared_b
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
@@ -191,18 +207,26 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # and shift the normalized data using gamma and beta. Store the result in   #
         # the out variable.                                                         #
         #############################################################################
-        pass
+        x_hat = (x-running_mean.reshape(1,-1))/np.sqrt(running_var + eps).reshape(1,-1)
+        out = gamma*x_hat + beta
+        cache['mean'] = u_b
+        cache['variance'] = sigma_squared_b
+        cache['x_hat'] = x_hat
+        cache['gamma'] = gamma
+        cache['beta'] = beta
+        cache['eps'] = eps
+        cache['x'] = x
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
     else:
         raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
 
-        # Store the updated running means back into bn_param
-        bn_param['running_mean'] = running_mean
-        bn_param['running_var'] = running_var
+    # Store the updated running means back into bn_param
+    bn_param['running_mean'] = running_mean
+    bn_param['running_var'] = running_var
 
-        return out, cache
+    return out, cache
 
 
 def batchnorm_backward(dout, cache):
@@ -227,7 +251,52 @@ def batchnorm_backward(dout, cache):
     # TODO: Implement the backward pass for batch normalization. Store the      #
     # results in the dx, dgamma, and dbeta variables.                           #
     #############################################################################
-    pass
+    # Unwrap all this stuff
+    u_b = cache['mean']
+    sigma_squared_b = cache['variance']
+    x_hat = cache['x_hat']
+    gamma = cache['gamma']
+    beta = cache['beta']
+    eps = cache['eps']
+    x = cache['x']
+    N = x.shape[0]
+
+    # Compute derivatives with respect to x (notation is x_1 if it's the first backwards)
+    dx_1 = gamma * dout
+    
+    # When we multiply a. (x-u_b) by b. (sigma_squared_b+eps)^-0.5
+    dx_2_b = np.sum((x-u_b) * dx_1, axis = 0) # dx_2_b is 
+    dx_2_a = ((sigma_squared_b+eps)**-0.5)*dx_1
+
+    # When we have (sigma_squared_b+eps) ^-0.5
+    dx_3_b = (-0.5) * ((sigma_squared_b+eps)**-1.5) * dx_2_b
+    
+    # When we have addition of epsilon
+    dx_4_b = dx_3_b * 1
+    
+    # When we have the summation of calculating sigma
+    dx_5_b = np.ones_like(x)/N * dx_4_b
+    
+    # When we have to the power of 2 of calculating sigma
+    dx_6_b = 2*(x-u_b) * dx_5_b
+    
+    # When we have to congregate both sources of dout1 and dout2
+    # In addition, we're also adding, so just multiply by 1 to show that
+    dx_7_a = dx_6_b * 1 + dx_2_a * 1
+    dx_7_b = dx_6_b * 1 + dx_2_a * 1
+    
+    # When multiplied by -1(so we can negate the adding to a subtract), value is -1 * prev_val
+    dx_8_b = -1*np.sum(dx_7_b, axis = 0)
+    
+    # When we have summation of calculating mean
+    dx_9_b = np.ones_like(x)/N * dx_8_b
+    
+    # When we have to congregate both sources of dout1 and dout2
+    dx_10 = dx_9_b + dx_7_a
+    
+    dgamma = np.sum(x_hat*dout, axis = 0)
+    dbeta = np.sum(dout, axis=0)
+    dx = dx_10
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################

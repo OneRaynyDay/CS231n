@@ -180,16 +180,23 @@ class FullyConnectedNet(object):
         ############################################################################
         # We want at LEAST W1. But the # of params is 1 + hidden_dims
         total_dims = [input_dim] + hidden_dims + [num_classes]
-        print(total_dims)
         for index in range(len(total_dims)-1):
             # For the weights and biases
             index_str = str(index + 1)
             self.params['W'+index_str] = weight_scale * np.random.randn(total_dims[index], total_dims[index+1])
             self.params['b'+index_str] = np.zeros((total_dims[index+1]))
-            if self.use_batchnorm:
+            '''if self.use_batchnorm and index != len(total_dims)-2:
                 # For batch normalization
-                self.params['gamma'+index_str] = 1 # We want the scale to be 1 initially
-                self.params['beta'+index_str] = 0 # We want there to be no shift initially
+                self.params['gamma'+index_str] = np.float32(1) # We want the scale to be 1 initially
+                self.params['beta'+index_str] = np.float32(0) # We want there to be no shift initially'''
+        
+        if use_batchnorm:
+            for idx in xrange(self.num_layers-1):
+                p = 'gamma' + np.str(idx+1)
+                self.params[p] = np.ones(total_dims[idx+1])
+                p = 'beta' + np.str(idx+1)
+                self.params[p] = np.zeros(total_dims[idx+1])
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -203,19 +210,19 @@ class FullyConnectedNet(object):
             if seed is not None:
                 self.dropout_param['seed'] = seed
 
-                # With batch normalization we need to keep track of running means and
-                # variances, so we need to pass a special bn_param object to each batch
-                # normalization layer. You should pass self.bn_params[0] to the forward pass
-                # of the first batch normalization layer, self.bn_params[1] to the forward
-                # pass of the second batch normalization layer, etc.
-                self.bn_params = []
-                if self.use_batchnorm:
-                    self.bn_params = [{'mode': 'train'} for i in xrange(self.num_layers - 1)]
+        # With batch normalization we need to keep track of running means and
+        # variances, so we need to pass a special bn_param object to each batch
+        # normalization layer. You should pass self.bn_params[0] to the forward pass
+        # of the first batch normalization layer, self.bn_params[1] to the forward
+        # pass of the second batch normalization layer, etc.
+        self.bn_params = []
+        if self.use_batchnorm:
+            self.bn_params = [{'mode': 'train'} for i in xrange(self.num_layers - 1)]
 
-                    # Cast all parameters to the correct datatype
-                    for k, v in self.params.iteritems():
-                        self.params[k] = v.astype(dtype)
-
+        
+        # Cast all parameters to the correct datatype
+        for k, v in self.params.iteritems():
+            self.params[k] = v.astype(dtype)
 
     def loss(self, X, y=None):
         """
@@ -249,20 +256,29 @@ class FullyConnectedNet(object):
         ############################################################################
         # We need a cache
         cache = {}
+        
         # We will forward propagate num_layers number of times, where num_layers = num_hidden + 1
         out_forward = X
-        for index in xrange(self.num_layers):
+        for index in xrange(self.num_layers-1):
             # For the weights and biases
             index_str = str(index + 1)
+            
             # Affine layer
-            out_forward, cache['affine_'+index_str] = affine_forward(out_forward, self.params['W'+index_str], self.params['b'+index_str])
+            out_forward, cache['affine_'+index_str] =\
+                                    affine_forward(out_forward, self.params['W'+index_str], self.params['b'+index_str])
+            
             # Insert Batch-norm layer here:
-            ######## TODO ########
+            if self.use_batchnorm:
+                out_forward, cache['bn_'+index_str] =\
+                batchnorm_forward(out_forward, self.params['gamma'+index_str], self.params['beta'+index_str], self.bn_params[index])
+
             # ReLU layer
-            if index != self.num_layers-1:
-                out_forward, cache['relu_'+index_str] = relu_forward(out_forward)
+            out_forward, cache['relu_'+index_str] = relu_forward(out_forward)
             # Insert Drop-out layer here:
-            ######## TODO ########
+        
+        # Last affine layer
+        index_str = str(self.num_layers)
+        out_forward, cache['affine_'+index_str] = affine_forward(out_forward, self.params['W'+index_str], self.params['b'+index_str])
         scores = out_forward
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -301,10 +317,15 @@ class FullyConnectedNet(object):
                                             
             # ReLU activation
             dout = relu_backward(dout, cache['relu_'+index_str])
-
+            
+            # dgamma_index and dbeta_index                                                        
+            if self.use_batchnorm:
+                dout, grads['gamma'+index_str], grads['beta'+index_str] = batchnorm_backward(dout, cache['bn_'+index_str])
+            
             # dW_index and db_index
             dout, grads['W'+index_str], grads['b'+index_str] = affine_backward(dout, cache['affine_'+index_str])
             grads['W'+index_str] += self.reg * self.params['W'+index_str]
+            
             
         ############################################################################
         #                             END OF YOUR CODE                             #
