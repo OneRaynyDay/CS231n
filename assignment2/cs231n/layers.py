@@ -209,8 +209,6 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         #############################################################################
         x_hat = (x-running_mean.reshape(1,-1))/np.sqrt(running_var + eps).reshape(1,-1)
         out = gamma*x_hat + beta
-        cache['mean'] = u_b
-        cache['variance'] = sigma_squared_b
         cache['x_hat'] = x_hat
         cache['gamma'] = gamma
         cache['beta'] = beta
@@ -596,6 +594,12 @@ def max_pool_backward_naive(dout, cache):
     return dx
 
 
+def reshape_to_bn(X, N, C, H, W):
+  return np.swapaxes(X, 0, 1).reshape(C, -1).T
+
+def reshape_from_bn(out, N, C, H, W):
+  return np.swapaxes(out.T.reshape(C, N, H, W), 0, 1)
+
 def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     """
       Computes the forward pass for spatial batch normalization.
@@ -627,7 +631,12 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # version of batch normalization defined above. Your implementation should  #
     # be very short; ours is less than five lines.                              #
     #############################################################################
-    pass
+    # Unroll our matrix:
+    N,C,H,W = x.shape
+    x_unroll = reshape_to_bn(x, *x.shape)
+    out, cache = batchnorm_forward(x_unroll, gamma, beta, bn_param)
+    out = reshape_from_bn(out, *x.shape)
+    cache['X.shape'] = x.shape
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -657,7 +666,14 @@ def spatial_batchnorm_backward(dout, cache):
     # version of batch normalization defined above. Your implementation should  #
     # be very short; ours is less than five lines.                              #
     #############################################################################
-    pass
+    # Unroll our matrix:
+    x_shape = cache['X.shape']
+    cache['x'] = reshape_to_bn(cache['x'], *x_shape)
+    cache['x_hat'] = reshape_to_bn(cache['x_hat'], *x_shape)
+    dout_unroll = reshape_to_bn(dout, *x_shape)
+    dx, dgamma, dbeta = batchnorm_backward(dout_unroll, cache)
+    dx = reshape_from_bn(dx, *x_shape)
+    
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
