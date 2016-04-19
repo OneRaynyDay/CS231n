@@ -166,59 +166,70 @@ def rnn_backward(dh, cache):
 
 
 def word_embedding_forward(x, W):
-  """
-  Forward pass for word embeddings. We operate on minibatches of size N where
-  each sequence has length T. We assume a vocabulary of V words, assigning each
-  to a vector of dimension D.
-  
-  Inputs:
-  - x: Integer array of shape (N, T) giving indices of words. Each element idx
-    of x muxt be in the range 0 <= idx < V.
-  - W: Weight matrix of shape (V, D) giving word vectors for all words.
-  
-  Returns a tuple of:
-  - out: Array of shape (N, T, D) giving word vectors for all input words.
-  - cache: Values needed for the backward pass
-  """
-  out, cache = None, None
-  ##############################################################################
-  # TODO: Implement the forward pass for word embeddings.                      #
-  #                                                                            #
-  # HINT: This should be very simple.                                          #
-  ##############################################################################
-  pass
-  ##############################################################################
-  #                               END OF YOUR CODE                             #
-  ##############################################################################
-  return out, cache
+    """
+      Forward pass for word embeddings. We operate on minibatches of size N where
+      each sequence has length T. We assume a vocabulary of V words, assigning each
+      to a vector of dimension D.
+
+      Inputs:
+      - x: Integer array of shape (N, T) giving indices of words. Each element idx
+        of x muxt be in the range 0 <= idx < V.
+      - W: Weight matrix of shape (V, D) giving word vectors for all words.
+
+      Returns a tuple of:
+      - out: Array of shape (N, T, D) giving word vectors for all input words.
+      - cache: Values needed for the backward pass
+    """
+    out, cache = None, None
+    ##############################################################################
+    # TODO: Implement the forward pass for word embeddings.                      #
+    #                                                                            #
+    # HINT: This should be very simple.                                          #
+    ##############################################################################
+    # In numpy, matrix1[matrix2] is for every number i in matrix2, get the ith row
+    # in matrix1 in place. In the end you'd have the shape of the matrix2 on the outer
+    # dimensions but you would end up with the rows of matrix1 for each element in the result.
+    out = W[x]
+    cache = (x,W)
+    
+    ##############################################################################
+    #                               END OF YOUR CODE                             #
+    ##############################################################################
+    return out, cache
 
 
 def word_embedding_backward(dout, cache):
-  """
-  Backward pass for word embeddings. We cannot back-propagate into the words
-  since they are integers, so we only return gradient for the word embedding
-  matrix.
-  
-  HINT: Look up the function np.add.at
-  
-  Inputs:
-  - dout: Upstream gradients of shape (N, T, D)
-  - cache: Values from the forward pass
-  
-  Returns:
-  - dW: Gradient of word embedding matrix, of shape (V, D).
-  """
-  dW = None
-  ##############################################################################
-  # TODO: Implement the backward pass for word embeddings.                     #
-  #                                                                            #
-  # HINT: Look up the function np.add.at                                       #
-  ##############################################################################
-  pass
-  ##############################################################################
-  #                               END OF YOUR CODE                             #
-  ##############################################################################
-  return dW
+    """
+      Backward pass for word embeddings. We cannot back-propagate into the words
+      since they are integers, so we only return gradient for the word embedding
+      matrix.
+
+      HINT: Look up the function np.add.at
+
+      Inputs:
+      - dout: Upstream gradients of shape (N, T, D)
+      - cache: Values from the forward pass
+
+      Returns:
+      - dW: Gradient of word embedding matrix, of shape (V, D).
+    """
+    dW = None
+    ##############################################################################
+    # TODO: Implement the backward pass for word embeddings.                     #
+    #                                                                            #
+    # HINT: Look up the function np.add.at                                       #
+    ##############################################################################
+    # Coming from W[x], we see that every row in W is chosen with regards to x.
+    # By taking the derivative of W[x], we are actually creating a 2d array with which
+    # the derivative of each spot is dout*1, and each spot is a row in W(which is denoted by x).
+    x,W = cache
+    V,D = W.shape
+    dW = np.zeros((V,D))
+    np.add.at(dW, x, dout)
+    ##############################################################################
+    #                               END OF YOUR CODE                             #
+    ##############################################################################
+    return dW
 
 
 def sigmoid(x):

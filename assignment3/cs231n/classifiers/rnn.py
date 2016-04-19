@@ -135,7 +135,43 @@ class CaptioningRNN(object):
     # defined above to store loss and gradients; grads[k] should give the      #
     # gradients for self.params[k].                                            #
     ############################################################################
-    pass
+    # First we must do an affine transformation to change from image features to initial hidden state.
+    # features is in the shape (N, Y), we should just transform it in to (N, H) using easy affine stuff.
+    affine_out, affine_cache = affine_forward(features, W_proj, b_proj)
+    
+    # Second, we need to change the captions_in(not captions_out, check the softmax function)into actual embeddings
+    # captions_in is in the shape (num_samples, number of captions_in words for the given sample), or (N, M)
+    # We should change it into:
+    # (num samples, number of captions_in words for the given sample, dimensions we should represent the words in)
+    embedding_out, embedding_cache = word_embedding_forward(captions_in, W_embed)
+    
+    # Third, if we're using LSTM/Vanilla, we need to specify which step_forward we need. 
+    # Given the correct one, we just plug in our prev_h, which for the first step is affine_out, as well as words
+    # Since the same h and rnn_cache will be used for both LSTM and vanilla, I used the same variables for both.
+    if self.cell_type == 'rnn':
+        h, rnn_cache = rnn_forward(embedding_out, affine_out, Wx, Wh, b)
+    
+    # Fourth, now that we have the hidden states, let's find the temporal_affine_forward outputs.
+    # These are interpreted as our predicted outputs. 
+    t_affine_out, t_affine_cache = temporal_affine_forward(h, W_vocab, b_vocab)
+    
+    # Lastly, we need to compute the softmax loss given the predicted outputs and the output captions.
+    loss, dx = temporal_softmax_loss(t_affine_out, captions_out, mask, verbose=False)
+    
+    ###################### Backward Pass ######################
+    # Perform backward pass on Step 4.
+    dx, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dx, t_affine_cache)
+    
+    # Perform backward pass on Step 3. Conditional - rnn would have a different gradient than lstm.
+    if self.cell_type == 'rnn':
+        dx, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dx, rnn_cache)
+    
+    # Perform backward pass on Step 2.
+    grads['W_embed'] = word_embedding_backward(dx, embedding_cache)
+    
+    # Perform backward pass on Step 1.
+    dx, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, affine_cache)
+    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
