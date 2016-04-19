@@ -233,7 +233,21 @@ class CaptioningRNN(object):
     # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
     # a loop.                                                                 #
     ###########################################################################
-    pass
+    # First word seed is the <START> token:
+    captions[:,0] = self._start
+    # Before anything, we need to change our features:
+    prev_h,_ = affine_forward(features, W_proj, b_proj)
+    h = np.zeros((N, max_length, prev_h.shape[1]))
+    h[:,0,:] = prev_h
+    for i in xrange(1, max_length):
+        # Step 1: Embed the previous word using embeddings:
+        word_embeddings,_ = word_embedding_forward(captions, W_embed)
+        # Step 2: Make an RNN step and get the state:
+        h[:,i,:],_ = rnn_step_forward(word_embeddings[:,i-1,:], h[:,i-1,:], Wx, Wh, b)
+        # Step 3: Apply learned affine to get scores:
+        scores,_ = affine_forward(h[:,i,:], W_vocab, b_vocab)
+        captions[:,i] = np.argmax(scores, axis=1)
+    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
