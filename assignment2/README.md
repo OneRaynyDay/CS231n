@@ -7,6 +7,6 @@ So far, I've implemented:
  - Convolutional neural networks with batch normalization and dropout
 
 # Accuracies of Each #
----
 Modular neural networks ~ 50%
+
 Convolutional neural networks ~ 65% (Though could be much better, check out my other repo "TensorflowConvNet" for better accuracies)
